@@ -3,17 +3,20 @@
 """
 #title           :HMC5983.py
 #description     :Python Script to read HMC5983 Geomagnetic sensor via I2C communication
-#author          :
+#author          :  - Achmad Syahrul Irwansyah (ach.syahrul99@gmail.com)
+                    - M. Luthfi Hariyadin
 #date            :2023/02/28
-#version         :0.1
+#version         :1.0
 #usage           :Python
 #notes           :Haven't tested yet
-#python_version  :
 #==============================================================================
 """
 
 from smbus import SMBus
 import time
+import math
+import rospy
+from std_msgs.msg import Float32
 
 #define register list from datasheet
 CONRA = 0x00 #Configuration Register A
@@ -50,18 +53,60 @@ I2C with Python code reference:
 https://www.abelectronics.co.uk/kb/article/1094/i2c-part-4---programming-i-c-with-python
 """
 
+def read_HMC ():
+    HMC5983_ADDR = 0x1E # The default address of HMC5893
+    HMC5983 = SMBus(1) # Create a new I2C bus (please do 'ls /dev/*i2c*' to detect the bus number)
+
+    HMC5983.write_byte_data(HMC5983_ADDR, CONRA, 0x10) #Conf. Reg. A (00010000): Temperature sensor is disable, 1 sample average per measurement, 15 Hz data output, Normal measurement configuration
+    HMC5983.write_byte_data(HMC5983_ADDR, CONRB, 0x20) #Conf. Reg. B (00100000): Sensor Field Range of ±1.3 Ga with 0.92 mG/LSb digital resolution (default)
+    HMC5983.write_byte_data(HMC5983_ADDR, MODREG, 0x01) #Mode Register (00000001): Single-Measurement Mode (default)
+
+    block = HMC5983.read_i2c_block_data(HMC5983_ADDR, DOXMSB, 32)
+
+    x_msb = block[0]
+    x_lsb = block[1]
+    z_msb = block[2]
+    z_lsb = block[3]
+    y_msb = block[4]
+    y_lsb = block[5]
+
+    x_raw = x_msb * 256 + x_lsb
+    z_raw = z_msb * 256 + z_lsb
+    y_raw = y_msb * 256 + y_lsb
+
+    x = confit(x_raw)
+    z = confit(z_raw)
+    y = confit(y_raw)
+
+    # initializing the publisher node
+    rospy.init_node('IMU_node', anonymous=True)
+
+    # Create a publisher
+    HMC_pub = rospy.Publisher('heading_data', Float32, queue_size=10)
+
+    # Create the message
+    heading = Float32()
+
+    # set the rate at which values will be published 
+    rate = rospy.Rate(10) # 10hz
+    while not rospy.is_shutdown():
+        heading.data = math.atan2(y, x) * 180 / math.pi
+
+        # Publish the message
+        rospy.loginfo("Heading: %f", heading.data)
+        HMC_pub.publish(heading)
+        rate.sleep()
+        
+def confit(value):
+    if value > 32768:
+        return value - 65535
+    else:
+        return value
+
 if __name__ == "__main__":
-    HMC5893_ADDR = 0x1E # The default address of HMC5893
-    HMC5893 = SMBus(1) # Create a new I2C bus (please do 'ls /dev/*i2c*' to detect the bus number)
-
-    HMC5893.write_byte_data(HMC5893_ADDR, CONRA, 0x10) #Conf. Reg. A (00010000): Temperature sensor is disable, 1 sample average per measurement, 15 Hz data output, Normal measurement configuration
-    HMC5893.write_byte_data(HMC5893_ADDR, CONRB, 0x20) #Conf. Reg. B (00100000): Sensor Field Range of ±1.3 Ga with 0.92 mG/LSb digital resolution (default)
-    HMC5893.write_byte_data(HMC5893_ADDR, MODREG, 0x01) #Mode Register (00000001): Single-Measurement Mode (default)
-
-    x_msb = HMC5893.read_byte_data(HMC5893_ADDR,DOXMSB)
-    x_lsb = HMC5893.read_byte_data(HMC5893_ADDR,DOXLSB)
-    z_msb = HMC5893.read_byte_data(HMC5893_ADDR,DOZMSB)
-    z_lsb = HMC5893.read_byte_data(HMC5893_ADDR,DOZLSB)
-    y_msb = HMC5893.read_byte_data(HMC5893_ADDR,DOYMSB)
-    y_lsb = HMC5893.read_byte_data(HMC5893_ADDR,DOYLSB)
+    try:
+        read_HMC()
+    except rospy.ROSInterruptException:
+        pass
+    
 
