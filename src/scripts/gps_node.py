@@ -13,10 +13,23 @@
 
 import rospy
 from geometry_msgs.msg import Pose
+from std_msgs.msg import Float32
 import serial
 import pynmea2 #library for parsing GPS NMEA format
 
-def read_gps():
+heading = -999
+def callback_heading(heading_HMC):
+    # Assign heading value from the subscribed message
+    global heading
+    heading = heading_HMC.data
+
+def listen_heading():
+    # listen heading from IMU_node
+    while not rospy.is_shutdown():
+        rospy.Subscriber('heading_data', Float32, callback_heading)
+
+def pub_gps():
+    global heading
     cond = "trouble: init. USB"
     # setup serial connection
     try:
@@ -48,6 +61,7 @@ def read_gps():
                 # asssign the massage's value
                 gps_msg.position.x = float(parsed.latitude) # left velocity
                 gps_msg.position.y = float(parsed.longitude) # right velocity
+                gps_msg.orientation.z = float(heading) # heading from GPS Module IMU (the yaw angle)
                 print(cond)
         except:
             cond = "no GPS meas."
@@ -61,6 +75,7 @@ def read_gps():
         
 if __name__ == "__main__":
     try:
-        read_gps()
+        listen_heading()
+        pub_gps()
     except rospy.ROSInterruptException:
         pass
