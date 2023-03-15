@@ -38,9 +38,9 @@ def odometry():
     rospy.init_node('arduino_node', anonymous=True)
 
     # set the rate at which values will be published 
-    rate = rospy.Rate(20) # 10hz
+    rate = rospy.Rate(20)# 10hz
     while not rospy.is_shutdown():
-        cond = "reading serial"
+        cond = "reading ser2ial"
         try:
             # read serial line and decode it into variables
             line_odom=odom.readline().decode('utf-8').split(',')

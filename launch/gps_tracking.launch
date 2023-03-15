@@ -1,5 +1,6 @@
 <launch>
     <node pkg="gps_tracking" type="gps_node.py" name="gps_node"/>
     <node pkg="gps_tracking" type="arduino_node.py" name="arduino_node"/>
+    <!--<node pkg="rosserial_arduino" type="serial_node.py" name="arduino_node"/>-->
     <node pkg="gps_tracking" type="ekf_node.py" name="ekf_node" output="screen"/>
 </launch>
