@@ -23,13 +23,9 @@ def callback_heading(heading_HMC):
     global heading
     heading = heading_HMC.data
 
-def listen_heading():
-    # listen heading from IMU_node
-    while not rospy.is_shutdown():
-        rospy.Subscriber('heading_data', Float32, callback_heading)
-
 def pub_gps():
     global heading
+    rospy.loginfo("Masuk")
     cond = "trouble: init. USB"
     # setup serial connection
     try:
@@ -41,12 +37,12 @@ def pub_gps():
 
     # Create a publisher which can "talk" to Turtlesim and tell it to move
     pose_gps = rospy.Publisher('pose_gps', Pose, queue_size=10)
+    
+    # Creat a subscriber to assign heading data
+    rospy.Subscriber('heading_data', Float32, callback_heading)
 
     # Create the message
     gps_msg = Pose()
-
-    # initializing the publisher node
-    rospy.init_node('gps_node', anonymous=True)
 
     # set the rate at which values will be published 
     rate = rospy.Rate(10) # 10hz
@@ -75,7 +71,10 @@ def pub_gps():
         
 if __name__ == "__main__":
     try:
-        listen_heading()
+    	# initializing the node
+        rospy.init_node('gps_node', anonymous=True)
         pub_gps()
+
     except rospy.ROSInterruptException:
+        rospy.loginfo("Berakhir")
         pass
